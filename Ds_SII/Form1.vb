@@ -126,7 +126,7 @@ Public Class Form1
 
         Me.Height = 500
         Me.Width = 900
-        Me.Text = "Envio modelos AEAT - Diagram Software S.L. v1.2 "
+        Me.Text = "Envio modelos AEAT - Diagram Software S.L. v2.2 "
 
 
         ' ver si coger certificados de almacen o viene el certificado y password en parametros
@@ -326,7 +326,7 @@ Public Class Form1
                     body.Add(cadena)
                 End If
                 If sw = 4 Then
-                    respuesta.Add(cadena)
+                    If Trim(cadena <> "") Then respuesta.Add(cadena)
                 End If
             End If
         Next
@@ -449,13 +449,19 @@ Public Class Form1
 
                 'contents = My.Computer.FileSystem.ReadAllText("C:\AEAT\390\2021\001000\errores_unsolo_error.html")  ' para pruebas QUITAR DESPUES
                 'contents = My.Computer.FileSystem.ReadAllText("C:\AEAT\390\2021\001000\errores_casilla.html")
+                'contents = My.Computer.FileSystem.ReadAllText("C:\AEAT\202\2022\2P\errores_avisos.txt")
 
                 Dim inicio As Integer
                 Dim car As String
                 Dim busca As String = ""
                 Dim kk As Integer = -1
 
+                ' Cargamos el json 
+
+                Dim read = Newtonsoft.Json.Linq.JObject.Parse(contents)
+
                 For x = 0 To respuesta.Count - 1 ' busca la variables de la respuesta y las rellena con el valor
+                    kk = -1
                     valor = ""
                     aux = Chr(34) & respuesta(x) & Chr(34) & ":" & Chr(34)
                     FirstCharacter = contents.IndexOf(aux) ' distingue entre mayusculas y minisculas
@@ -470,64 +476,79 @@ Public Class Form1
                             End If
                         Next
                     Else
-                        ' vemos si es una variable de error
-                        aux = Chr(34) & respuesta(x) ' ejemplo "E00
-                        FirstCharacter = contents.IndexOf(aux) ' distingue entre mayusculas y minisculas
-                        If FirstCharacter <> -1 Then
-                            aux = ":["
-                            'Dim delimitadores() As String = {"["}
-                            Dim delimitadores() As String = {aux}
-                            aux = Chr(34) & ","
-                            Dim delimitadores1() As String = {aux}
-                            Dim vectoraux() As String
-                            Dim vectoraux1() As String
-                            Dim Final As String
-                            Dim itemaux As String
-                            inicio = FirstCharacter + Len(aux) + 1
-                            Final = Mid(contents, inicio, Len(contents))
+                        If respuesta(x) = "errores" Then
+                            Try
+                                valor = ""
+                                cadena = read.Item("respuesta")("errores").ToString
+                                Dim resError As String = ""
+                                Dim jsonErrores As String = cadena  ' ahora pasamos todos los valores de la lista errores a un array tipo lista
+                                Dim listaErrores As List(Of String) = Newtonsoft.Json.JsonConvert.DeserializeObject(Of List(Of String))(jsonErrores)
+                                kk = 0
+                                For Each item As String In listaErrores
+                                    resError = "E" & kk.ToString().PadLeft(2, "0"c)
+                                    TextBox2.Text = TextBox2.Text & resError & " = " & item & vbCrLf
+                                    kk = kk + 1
+                                Next
+                            Catch ex As Exception
+                                ' no existe el diccionario errores, no hacemos nada
+                            End Try
 
-                            vectoraux = Final.Split(delimitadores, StringSplitOptions.None) 'en este proceso se graba todos los errores E00, E01 ect...
 
-                            Dim resError As String = ""
+                        End If
 
-                            For Each item As String In vectoraux
-                                If kk <> -1 Then
-                                    vectoraux1 = item.Split(delimitadores1, StringSplitOptions.None)
-                                    For Each item1 As String In vectoraux1
-                                        itemaux = item1
-                                        If Mid(itemaux, Len(itemaux), 1) = "," Then
-                                            itemaux = Mid(itemaux, 1, Len(itemaux) - 1)
-                                        End If
-                                        itemaux = itemaux.Replace("]}}", "")
-                                        If Mid(itemaux, Len(itemaux), 1) <> Chr(34) Then
-                                            itemaux = itemaux & Chr(34)
-                                        End If
+                        If respuesta(x) = "avisos" Then
 
-                                        resError = "E" & kk.ToString().PadLeft(2, "0"c)
-                                        TextBox2.Text = TextBox2.Text & resError & " = " & itemaux & vbCrLf
-                                    Next
-                                End If
-                                kk = kk + 1
-                            Next
+                            Try
+                                valor = ""
+                                cadena = read.Item("respuesta")("avisos").ToString
+                                Dim resError As String = ""
+                                Dim jsonErrores As String = cadena  ' ahora pasamos todos los valores de la lista errores a un array tipo lista
+                                Dim listaErrores As List(Of String) = Newtonsoft.Json.JsonConvert.DeserializeObject(Of List(Of String))(jsonErrores)
+                                kk = 0
+                                For Each item As String In listaErrores
+                                    resError = "A" & kk.ToString().PadLeft(2, "0"c)
+                                    TextBox2.Text = TextBox2.Text & resError & " = " & item & vbCrLf
+                                    kk = kk + 1
+                                Next
+                            Catch ex As Exception
+                                ' no existe el diccionario avisos, no hacemos nada
+                            End Try
+                        End If
+
+                        If respuesta(x) = "advertencias" Then
+                            Try
+                                valor = ""
+                                cadena = read.Item("respuesta")("advertencias").ToString
+                                Dim resError As String = ""
+                                Dim jsonErrores As String = cadena  ' ahora pasamos todos los valores de la lista errores a un array tipo lista
+                                Dim listaErrores As List(Of String) = Newtonsoft.Json.JsonConvert.DeserializeObject(Of List(Of String))(jsonErrores)
+                                kk = 0
+                                For Each item As String In listaErrores
+                                    resError = "V" & kk.ToString().PadLeft(2, "0"c)
+                                    TextBox2.Text = TextBox2.Text & resError & " = " & item & vbCrLf
+                                    kk = kk + 1
+                                Next
+                            Catch ex As Exception
+                                ' no existe el diccionario advertencias, no hacemos nada
+                            End Try
                         End If
                     End If
 
-                    If kk = -1 Then ' no ha encontrado errores
+                    If kk = -1 Then ' no ha encontrado errores, ni avisos ni advertencias, graba el titulo con su valor
                         TextBox2.Text = TextBox2.Text & respuesta(x) & " = " & valor & vbCrLf
                     End If
-
                 Next
             End If
 
-            If Not valido Then
-                Dim ruta As String
-                ruta = Path.GetDirectoryName(fich_respuesta)
-                If ruta = "" Then
-                    ruta = My.Application.Info.DirectoryPath
-                End If
-                aux = quita_raros(contents)
-                File.WriteAllText(ruta & "\errores.html", aux, Encoding.Default)
+        If Not valido Then
+            Dim ruta As String
+            ruta = Path.GetDirectoryName(fich_respuesta)
+            If ruta = "" Then
+                ruta = My.Application.Info.DirectoryPath
             End If
+            aux = quita_raros(contents)
+            File.WriteAllText(ruta & "\errores.html", aux, Encoding.Default)
+        End If
 
         Catch ex As Exception
             TextBox2.Text = "MENSAJE = Proceso cancelado o error en envio." & ex.Message
