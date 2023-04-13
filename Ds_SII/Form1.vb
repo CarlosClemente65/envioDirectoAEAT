@@ -373,6 +373,7 @@ Public Class Form1
         Dim titulo, valor, aux, codifica, cadena, estado As String
         Dim url As String = ""
         Dim valido As Boolean = False
+        Dim fecha As Date
 
         Try
             System.Net.ServicePointManager.SecurityProtocol = 3072 ' Tls12	3072  - Tls11	768  para que no de error de que no puede crear un canal seguro. Con el framework 4.7.2 ya no da error si se quita esta linea
@@ -389,6 +390,18 @@ Public Class Form1
                 certificate = asigna_certificado_almacen(indice_certificado)
             Else
                 certificate = carga_certificado(certificado_fich, certificado_passw)
+            End If
+
+            ' comprobar si el certificado esta caducado
+            fecha = Convert.ToDateTime(certificate.GetExpirationDateString())
+            If fecha < DateTime.Now Then
+                TextBox2.Text = "MENSAJE = El certificado ha caducado "
+                If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, TextBox2.Text, Encoding.Default)
+                If viene_de_ds Then
+                    End   ' terminamos
+                Else
+                    Exit Sub
+                End If
             End If
 
             request.ClientCertificates.Add(certificate)
