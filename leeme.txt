@@ -1,13 +1,17 @@
-mismo funcionamiento que el ds_SII
+Sirve para presentar modelos en formato json, se pide certificado
+      para validar modelos con ds123458 no pide certificado ya que no hace falta.
+
 el txt llevara las ordenes a realizar, ver ejemplo 111.txt
 
 Leer certificado del almacen de windows
-  dsenviodirecto2021.exe  ds123456 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res
-  dsenviodirecto2021.exe  ds123456 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res NO fr123234a5
+  dsenviodirecto2.exe  ds123456 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res
+  dsenviodirecto2.exe  ds123456 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res NO fr123234a5
 
 Leer certificado que esta en un fichero mas el password
-  dsenviodirecto2021.exe  ds123457 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res c:\certificado\certi.pfx 12345
+  dsenviodirecto2.exe  ds123457 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res c:\certificado\certi.pfx 12345
 
+Para validad un modelo
+    dsenviodirecto2.exe  ds123458 0 C:\documentos\enviohacienda\110.txt C:\documentos\enviohacienda\110.res 
 
 
 Ejemplo guion.txt
@@ -28,12 +32,13 @@ F01=<T390020210A0000><AUX>                                                      
 Modelo
 Ejercicio
 Periodo
-Periodo
 CodigoSeguroVerificacion
 Justificante
 Expediente
 AUTORIZADORUT
+pdf
 errores
+avisos
 
 
 
@@ -48,12 +53,4 @@ Justificante =
 Expediente = 
 AUTORIZADORUT = 
 E00 = "PAR016 - Los resultados de las autoliquidaciones periodicas (Apartado 9 de la declaracion) no coinciden con los resultados de la declaracion anual (Casillas 86 o 94)."
-
-
-
-
-
-
-
-
 

@@ -14,6 +14,8 @@ Public Class Form1
     Dim Caducado As String = "Caducado "
     Dim certificado_fich = ""
     Dim certificado_passw = ""
+    Dim sincertificado = False
+
 
 
     Private Sub carga_certificados()
@@ -186,6 +188,23 @@ Public Class Form1
                         End  ' terminamos
 
                     End If
+
+                Case "ds123458" ' para validar una declaracion no hace falta certificado
+                    If arguments.Count = 5 Then ' ejemplo ds123457 0 C:\AEAT\111\111_2021.txt C:\AEAT\111\111_2021.res
+                        tipo = arguments(2)
+                        TextBox1.Text = arguments(3) ' fichero a enviar
+                        fich_respuesta = arguments(4) ' // xml recibe respuesta web service
+                        If File.Exists(fich_respuesta) Then File.Delete(fich_respuesta)
+                        viene_de_ds = True
+                        sincertificado = True
+                        envio_peticion()
+
+                    Else
+                        End  ' terminamos
+
+                    End If
+
+
 
                 Case Else
                     End ' ha entrado con clave incorrecta
@@ -383,28 +402,30 @@ Public Class Form1
             Dim request As HttpWebRequest = WebRequest.Create(url)
             Dim certificate As X509Certificate2  ' X509Certificate deberia ser X509Certificate2 para proxima compilacion, ya se ha cambiado falta compilarlo
 
-            If certificado_fich = "" Then
-                cadena = ListBox2.Items(ListBox1.SelectedIndex)
-                argumentos = cadena.Split()
-                indice_certificado = Integer.Parse(argumentos(1))
-                certificate = asigna_certificado_almacen(indice_certificado)
-            Else
-                certificate = carga_certificado(certificado_fich, certificado_passw)
-            End If
-
-            ' comprobar si el certificado esta caducado
-            fecha = Convert.ToDateTime(certificate.GetExpirationDateString())
-            If fecha < DateTime.Now Then
-                TextBox2.Text = "MENSAJE = El certificado ha caducado "
-                If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, TextBox2.Text, Encoding.Default)
-                If viene_de_ds Then
-                    End   ' terminamos
+            If sincertificado = False Then  ' SE PIDE EL CERTIFICADO , sera para los casos que hay que presentar la declaracion es decir distinto a ds123458
+                If certificado_fich = "" Then
+                    cadena = ListBox2.Items(ListBox1.SelectedIndex)
+                    argumentos = cadena.Split()
+                    indice_certificado = Integer.Parse(argumentos(1))
+                    certificate = asigna_certificado_almacen(indice_certificado)
                 Else
-                    Exit Sub
+                    certificate = carga_certificado(certificado_fich, certificado_passw)
                 End If
+
+                ' comprobar si el certificado esta caducado
+                fecha = Convert.ToDateTime(certificate.GetExpirationDateString())
+                If fecha < DateTime.Now Then
+                    TextBox2.Text = "MENSAJE = El certificado ha caducado "
+                    If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, TextBox2.Text, Encoding.Default)
+                    If viene_de_ds Then
+                        End   ' terminamos
+                    Else
+                        Exit Sub
+                    End If
+                End If
+                request.ClientCertificates.Add(certificate)
             End If
 
-            request.ClientCertificates.Add(certificate)
 
             Dim data As StringBuilder
             data = New StringBuilder()
@@ -489,6 +510,31 @@ Public Class Form1
                             End If
                         Next
                     Else
+
+                        If respuesta(x) = "pdf" Then
+                            Try
+                                valor = ""
+                                cadena = read.Item("respuesta")("pdf").ToString
+                                Dim pdf As String = ""
+                                Dim jsonpdf As String = cadena  ' ahora pasamos todos los valores de la lista errores a un array tipo lista
+                                Dim listapdf As List(Of String) = Newtonsoft.Json.JsonConvert.DeserializeObject(Of List(Of String))(jsonpdf)
+                                Dim ficheropdf As String = Path.GetDirectoryName(fich_respuesta) & "\" & Path.GetFileNameWithoutExtension(fich_respuesta) & ".pdf"
+
+                                For Each item As String In listapdf
+                                    kk = 0
+                                    Dim Base64Byte() As Byte = Convert.FromBase64String(item)
+                                    TextBox2.Text = TextBox2.Text & "pdf" & " = " & ficheropdf & vbCrLf
+                                    File.WriteAllBytes(ficheropdf, Base64Byte)
+                                Next
+
+
+                            Catch ex As Exception
+                                ' no existe el diccionario errores, no hacemos nada
+                            End Try
+
+                        End If
+
+
                         If respuesta(x) = "errores" Then
                             Try
                                 valor = ""
@@ -553,15 +599,15 @@ Public Class Form1
                 Next
             End If
 
-        If Not valido Then
-            Dim ruta As String
-            ruta = Path.GetDirectoryName(fich_respuesta)
-            If ruta = "" Then
-                ruta = My.Application.Info.DirectoryPath
+            If Not valido Then
+                Dim ruta As String
+                ruta = Path.GetDirectoryName(fich_respuesta)
+                If ruta = "" Then
+                    ruta = My.Application.Info.DirectoryPath
+                End If
+                aux = quita_raros(contents)
+                File.WriteAllText(ruta & "\errores.html", aux, Encoding.Default)
             End If
-            aux = quita_raros(contents)
-            File.WriteAllText(ruta & "\errores.html", aux, Encoding.Default)
-        End If
 
         Catch ex As Exception
             TextBox2.Text = "MENSAJE = Proceso cancelado o error en envio." & ex.Message
