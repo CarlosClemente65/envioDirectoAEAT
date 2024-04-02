@@ -5,6 +5,7 @@ Imports System.Text
 Imports System.Security.Cryptography
 Imports System.Security.Cryptography.X509Certificates
 Imports Microsoft.VisualBasic
+Imports Newtonsoft.Json.Linq
 
 Public Class Form1
     Dim lista_envio As New ArrayList
@@ -282,7 +283,7 @@ Public Class Form1
                         Exit For
                     End If
                 End If
-                
+
             End If
         Next
 
@@ -394,6 +395,8 @@ Public Class Form1
         Dim valido As Boolean = False
         Dim fecha As Date
 
+
+
         Try
             System.Net.ServicePointManager.SecurityProtocol = 3072 ' Tls12	3072  - Tls11	768  para que no de error de que no puede crear un canal seguro. Con el framework 4.7.2 ya no da error si se quita esta linea
             codifica = saca_codificacion_modelo(TextBox1.Text) ' UTF-8 , ISO8859-1 (ascii extendido 256 bits o ansi)
@@ -473,6 +476,8 @@ Public Class Form1
 
             ' Read from the stream object using the reader, put the contents in a string
             Dim contents As String = reader.ReadToEnd()
+            Dim respuestaJson As JObject = JObject.Parse(contents)
+            Dim respuestaHtml As String = formateaJson(respuestaJson)
 
             estado = (CType(response, HttpWebResponse).StatusDescription)
             If estado = "OK" Then
@@ -493,6 +498,7 @@ Public Class Form1
                 ' Cargamos el json 
 
                 Dim read = Newtonsoft.Json.Linq.JObject.Parse(contents)
+                respuestaHtml = formateaJson(read)
 
                 For x = 0 To respuesta.Count - 1 ' busca la variables de la respuesta y las rellena con el valor
                     kk = -1
@@ -597,16 +603,23 @@ Public Class Form1
                         TextBox2.Text = TextBox2.Text & respuesta(x) & " = " & valor & vbCrLf
                     End If
                 Next
+
             End If
 
             If Not valido Then
                 Dim ruta As String
+                Dim salida As String
+                Dim posicion As Integer
                 ruta = Path.GetDirectoryName(fich_respuesta)
+                salida = Path.GetFileNameWithoutExtension(fich_respuesta)
+                posicion = salida.LastIndexOf("_")
+                salida = salida.Substring(0, posicion)
                 If ruta = "" Then
                     ruta = My.Application.Info.DirectoryPath
                 End If
                 aux = quita_raros(contents)
-                File.WriteAllText(ruta & "\errores.html", aux, Encoding.Default)
+                File.WriteAllText(ruta & "\" & salida & "_errores.json", aux, Encoding.Default)
+                File.WriteAllText(ruta & "\" & salida & "_errores.html", respuestaHtml, Encoding.Default)
             End If
 
         Catch ex As Exception
@@ -653,5 +666,86 @@ Public Class Form1
 
     End Sub
 
+    Private Function formateaJson(respuesta As Newtonsoft.Json.Linq.JObject) As String
+        Dim errores As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "errores") ' Captura los errores
+        Dim avisos As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "avisos") 'Captura los avisos
+        Dim advertencias As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "advertencias") 'Captura las advertencias
+
+        ' Contruye el HTML
+        Dim contenidoHtml As String = ""
+        contenidoHtml = "<!DOCTYPE html>" & vbCrLf &
+                                        "<html>" & vbCrLf &
+                                        "<head>" & vbCrLf &
+                                        "<style>" & vbCrLf &
+                                        "th, td{border: 1px solid red;padding: 5px 5px 5px 15px;text-align: justify;}" & vbCrLf &
+                                        "td{font-size:0.9em;padding: 5px 20px 5px 40px}" & vbCrLf &
+                                        "</style>" & vbCrLf &
+                                        "</head>" & vbCrLf &
+                                        "<body  style='margin: 40px; font-family: Calibri; font-size: 1.2em;'>" & vbCrLf &
+                                        "<title>Resultado de la validaci&oacute;n</title>" & vbCrLf &
+                                        "<h2 style='font-family:Calibri; font-size: 1.8em; text-align:center'>Resultado de la validaci&oacute;n</h2>" & vbCrLf
+
+        If errores <> "" Then
+            'Generar tabla de errores
+            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #FFBFBF'><th><span style='color: red;font-size: 1.2em;margin-right: 5px;'>&#128711;</span> Errores detectados</th></tr>" & vbCrLf
+            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "errores")
+            contenidoHtml &= "</table>" & vbCrLf
+        End If
+
+
+
+        If avisos <> "" Then
+            ' Agregar tabla para avisos
+            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #F9E79F'><th><span style='color: #228B22;font-size: 1.2em;margin-right: 5px;'>&#9888;</span>Avisos que deben revisarse</th></tr>" & vbCrLf
+            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "avisos")
+            contenidoHtml &= "</table>" & vbCrLf
+        End If
+
+        If advertencias <> "" Then
+            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #AED6F1'><th><span style='color: #6A5ACD;font-size: 1.2em;margin-right: 5px;'>&#128712;</span>Advertencias a tener en cuenta</th></tr>" & vbCrLf
+            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "advertencias")
+            contenidoHtml &= "</table>" & vbCrLf
+        End If
+
+        contenidoHtml &= "</body>" & vbCrLf &
+                         "</html>"
+
+        Return contenidoHtml
+    End Function
+
+    Private Function ObtenerElementosJson(respuesta As Newtonsoft.Json.Linq.JObject, clave As String) As String
+        Dim elementos As String = ""
+        If respuesta.ContainsKey(clave) Then
+            Dim elementosArray As JArray = DirectCast(respuesta(clave), JArray)
+            If elementosArray.Count > 0 Then
+                elementos = String.Join(", ", elementosArray.Select(Function(e) e.ToString()))
+            End If
+        End If
+        Return elementos
+    End Function
+
+    Private Function GenerarFilas(respuesta As Newtonsoft.Json.Linq.JObject, clave As String) As String
+        Dim color_error As String = "#FFEBEE"
+        Dim color_aviso As String = "#FCF3CF"
+        Dim color_advertencia As String = "#EBF5FB"
+        Dim elementos As String = ""
+        If respuesta.ContainsKey(clave) Then
+            Dim elementosArray As JArray = DirectCast(respuesta(clave), JArray)
+            For Each elemento As JToken In elementosArray
+                Select Case clave
+                    Case "errores"
+                        elementos &= "<tr style='background-color: " & color_error & "'><tr><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
+                    Case "avisos"
+                        elementos &= "<tr style='background-color: " & color_aviso & "'><tr><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
+                    Case "advertencias"
+                        elementos &= "<tr style='background-color: " & color_advertencia & "'><tr><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
+                End Select
+            Next
+        End If
+        Return elementos
+    End Function
 
 End Class
