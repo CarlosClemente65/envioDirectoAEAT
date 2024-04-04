@@ -6,6 +6,7 @@ Imports System.Security.Cryptography
 Imports System.Security.Cryptography.X509Certificates
 Imports Microsoft.VisualBasic
 Imports Newtonsoft.Json.Linq
+Imports System.Runtime.Remoting
 
 Public Class Form1
     Dim lista_envio As New ArrayList
@@ -298,6 +299,8 @@ Public Class Form1
         Dim cadena As String
         Dim lista As New ArrayList
         Dim sw As Integer = 0
+        Dim datoLinea As String 'Permite almacenar el modelo, ejercicio y periodo del modelo
+        Dim valorLinea As String 'Permite almacenar el modelo, ejercicio y periodo del modelo
 
         Using sr As New StreamReader(fichero, Encoding.GetEncoding(codificacion))
             Dim line As String
@@ -453,8 +456,6 @@ Public Class Form1
             Next
             data.Append("}")
 
-            '  Dim basura As String = data.ToString()
-
 
             Dim basura As String = data.ToString()
             Dim byteArray As Byte()
@@ -476,8 +477,7 @@ Public Class Form1
 
             ' Read from the stream object using the reader, put the contents in a string
             Dim contents As String = reader.ReadToEnd()
-            Dim respuestaJson As JObject = JObject.Parse(contents)
-            Dim respuestaHtml As String = formateaJson(respuestaJson)
+            Dim respuestaHtml As String = ""
 
             estado = (CType(response, HttpWebResponse).StatusDescription)
             If estado = "OK" Then
@@ -496,9 +496,7 @@ Public Class Form1
                 Dim kk As Integer = -1
 
                 ' Cargamos el json 
-
                 Dim read = Newtonsoft.Json.Linq.JObject.Parse(contents)
-                respuestaHtml = formateaJson(read)
 
                 For x = 0 To respuesta.Count - 1 ' busca la variables de la respuesta y las rellena con el valor
                     kk = -1
@@ -604,22 +602,63 @@ Public Class Form1
                     End If
                 Next
 
+                'Controla si en la respuesta hay errores, avisos o advertencias para crear el html
+                Dim elementos As String() = {"errores", "avisos", "advertencias"}
+                Dim control = 0
+                For Each elemento As String In elementos
+                    If read("respuesta").Type = JTokenType.Object AndAlso CType(read("respuesta"), JObject).ContainsKey(elemento) Then
+                        control += 1
+                    End If
+                Next
+
+                'Poner aqui el control del array cabecera para sacar el modelo, ejercicio y periodo y grabarlo luego en el html
+
+                Dim indice As Integer
+                Dim modelo As String = ""
+                Dim ejercicio As String = ""
+                Dim periodo As String = ""
+                Dim cliente As String = ""
+                For Each linea As String In Cabecera
+                    indice = linea.IndexOf("=")
+                    If indice <> -1 Then
+                        If linea.Contains("MODELO") Then
+                            modelo = linea.Substring(indice + 1)
+                        End If
+                        If linea.Contains("EJERCICIO") Then
+                            ejercicio = linea.Substring(indice + 1)
+                        End If
+                        If linea.Contains("PERIODO") Then
+                            periodo = linea.Substring(indice + 1)
+                        End If
+                    End If
+                Next
+
+                Dim posicion As Integer
+                cliente = Path.GetFileNameWithoutExtension(fich_respuesta)
+                posicion = cliente.IndexOf("_salida")
+                cliente = cliente.Substring(0, posicion)
+
+                If control > 0 Then
+                    respuestaHtml = formateaJson(read, cliente, modelo, ejercicio, periodo)
+                End If
             End If
+
+
 
             If Not valido Then
                 Dim ruta As String
                 Dim salida As String
-                Dim posicion As Integer
+
                 ruta = Path.GetDirectoryName(fich_respuesta)
                 salida = Path.GetFileNameWithoutExtension(fich_respuesta)
-                posicion = salida.LastIndexOf("_")
-                salida = salida.Substring(0, posicion)
                 If ruta = "" Then
                     ruta = My.Application.Info.DirectoryPath
                 End If
                 aux = quita_raros(contents)
-                File.WriteAllText(ruta & "\" & salida & "_errores.json", aux, Encoding.Default)
-                File.WriteAllText(ruta & "\" & salida & "_errores.html", respuestaHtml, Encoding.Default)
+                'File.WriteAllText(ruta & "\" & salida & ".json", aux, Encoding.Default)
+                If respuestaHtml <> "" Then
+                    File.WriteAllText(ruta & "\" & salida & ".html", respuestaHtml, Encoding.Default)
+                End If
             End If
 
         Catch ex As Exception
@@ -630,7 +669,7 @@ Public Class Form1
         Try
             aux = TextBox2.Text
             aux = quita_raros(aux)
-            If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, aux, Encoding.Default)
+            If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, aux, Encoding.Default) 'Codigo comentado porque ya se genera la respuesta en un fichero .html con los errores
         Catch ex As Exception
 
         End Try
@@ -666,7 +705,7 @@ Public Class Form1
 
     End Sub
 
-    Private Function formateaJson(respuesta As Newtonsoft.Json.Linq.JObject) As String
+    Private Function formateaJson(respuesta As Newtonsoft.Json.Linq.JObject, cliente As String, modelo As String, ejercicio As String, periodo As String) As String
         Dim errores As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "errores") ' Captura los errores
         Dim avisos As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "avisos") 'Captura los avisos
         Dim advertencias As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "advertencias") 'Captura las advertencias
@@ -677,18 +716,19 @@ Public Class Form1
                                         "<html>" & vbCrLf &
                                         "<head>" & vbCrLf &
                                         "<style>" & vbCrLf &
-                                        "th, td{border: 1px solid red;padding: 5px 5px 5px 15px;text-align: justify;}" & vbCrLf &
+                                        "th, td{border: 1px solid red;padding: 5px 5px 5px 15px;text-align: justify; font-size:1em}" & vbCrLf &
                                         "td{font-size:0.9em;padding: 5px 20px 5px 40px}" & vbCrLf &
                                         "</style>" & vbCrLf &
                                         "</head>" & vbCrLf &
                                         "<body  style='margin: 40px; font-family: Calibri; font-size: 1.2em;'>" & vbCrLf &
                                         "<title>Resultado de la validaci&oacute;n</title>" & vbCrLf &
-                                        "<h2 style='font-family:Calibri; font-size: 1.8em; text-align:center'>Resultado de la validaci&oacute;n</h2>" & vbCrLf
+                                        "<p style='font-family:Calibri; font-size: 1.5em; text-align:center'>Resultado de la validaci&oacute;n</p>" & vbCrLf &
+                                        "<p style='font-family:Calibri; font-size: 0.9em; text-align: center'>Cliente: " & cliente & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Modelo: " & modelo & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Ejercicio: " & ejercicio & "-&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;Periodo: " & periodo & "</p>" & vbCrLf
 
         If errores <> "" Then
             'Generar tabla de errores
             contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #FFBFBF'><th><span style='color: red;font-size: 1.2em;margin-right: 5px;'>&#128711;</span> Errores detectados</th></tr>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #FFBFBF'><th><span style='color: red;font-size: 1em;margin-right: 5px;'>&#128711;</span> Errores detectados</th></tr>" & vbCrLf
             contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "errores")
             contenidoHtml &= "</table>" & vbCrLf
         End If
