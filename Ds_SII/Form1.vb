@@ -398,6 +398,8 @@ Public Class Form1
         Dim url As String = ""
         Dim valido As Boolean = False
         Dim fecha As Date
+        Dim respuestaHtml As String = ""
+        Dim read As Newtonsoft.Json.Linq.JObject = Nothing
         'Dim controlPaso As String = "" 'Para debugar el error de longitud incorrecta (quitar despues)
 
 
@@ -475,14 +477,18 @@ Public Class Form1
             dataStream.Close() ' Close the Stream object.
 
             'controlPaso = "Paso: obtencion respuesta"
-            Dim response As WebResponse = request.GetResponse()  ' Get the response. Aqui hace la peticion
+            Dim response As WebResponse = request.GetResponse()
+            ' Get the response. Aqui hace la peticion
+            Throw New Exception
             Dim stream As System.IO.Stream = response.GetResponseStream()
             'Dim reader = New StreamReader(stream, System.Text.Encoding.Default, False, 512)
             Dim reader = New StreamReader(stream)
 
             ' Read from the stream object using the reader, put the contents in a string
             Dim contents As String = reader.ReadToEnd()
-            Dim respuestaHtml As String = ""
+            ' Cargamos el json 
+            read = Newtonsoft.Json.Linq.JObject.Parse(contents)
+
 
             estado = (CType(response, HttpWebResponse).StatusDescription)
             If estado = "OK" Then
@@ -500,8 +506,6 @@ Public Class Form1
                 Dim busca As String = ""
                 Dim kk As Integer = -1
 
-                ' Cargamos el json 
-                Dim read = Newtonsoft.Json.Linq.JObject.Parse(contents)
 
                 'controlPaso = "Paso: carga respuesta textBox"
                 For x = 0 To respuesta.Count - 1 ' busca la variables de la respuesta y las rellena con el valor
@@ -613,53 +617,54 @@ Public Class Form1
 
                 'controlPaso = "Paso: montar el html"
                 If dsclave = "ds123458" Then 'Solo se hace el html cuando se manda a validar, ya que el programa sirve tambien para la presentacion directa
+                    respuestaHtml = generaRespuestaHtml(read, Cabecera, fich_respuesta, respuesta)
                     'Controla si en la respuesta hay errores, avisos o advertencias para crear el html
-                    Dim elementos As String() = {"errores", "avisos", "advertencias"}
-                    Dim control = 0
-                    'Detecta si en la respuesta hay alguno de los elementos para ver si hay errores, avisos o advertencias
-                    For Each elemento As String In elementos
-                        If read("respuesta").Type = JTokenType.Object AndAlso CType(read("respuesta"), JObject).ContainsKey(elemento) Then
-                            control += 1
-                        End If
-                    Next
+                    'Dim elementos As String() = {"errores", "avisos", "advertencias"}
+                    'Dim control = 0
+                    ''Detecta si en la respuesta hay alguno de los elementos para ver si hay errores, avisos o advertencias
+                    'For Each elemento As String In elementos
+                    '    If read("respuesta").Type = JTokenType.Object AndAlso CType(read("respuesta"), JObject).ContainsKey(elemento) Then
+                    '        control += 1
+                    '    End If
+                    'Next
 
-                    'Carga los datos del modelo, ejercicio, periodo y cliente para ponerlos en el html
-                    Dim indice As Integer
-                    Dim modelo As String = ""
-                    Dim ejercicio As String = ""
-                    Dim periodo As String = ""
-                    Dim cliente As String = ""
-                    For Each linea As String In Cabecera
-                        indice = linea.IndexOf("=")
-                        If indice <> -1 Then
-                            If linea.Contains("MODELO") Then
-                                modelo = linea.Substring(indice + 1)
-                            End If
-                            If linea.Contains("EJERCICIO") Then
-                                ejercicio = linea.Substring(indice + 1)
-                            End If
-                            If linea.Contains("PERIODO") Then
-                                periodo = linea.Substring(indice + 1)
-                            End If
-                        End If
-                    Next
+                    ''Carga los datos del modelo, ejercicio, periodo y cliente para ponerlos en el html
+                    'Dim indice As Integer
+                    'Dim modelo As String = ""
+                    'Dim ejercicio As String = ""
+                    'Dim periodo As String = ""
+                    'Dim cliente As String = ""
+                    'For Each linea As String In Cabecera
+                    '    indice = linea.IndexOf("=")
+                    '    If indice <> -1 Then
+                    '        If linea.Contains("MODELO") Then
+                    '            modelo = linea.Substring(indice + 1)
+                    '        End If
+                    '        If linea.Contains("EJERCICIO") Then
+                    '            ejercicio = linea.Substring(indice + 1)
+                    '        End If
+                    '        If linea.Contains("PERIODO") Then
+                    '            periodo = linea.Substring(indice + 1)
+                    '        End If
+                    '    End If
+                    'Next
 
-                    'controlPaso = "Paso: carga cliente, modelo, ejercicio"
-                    Dim posicion As Integer
-                    Try
-                        'Intenta asignar el numero de cliente cogiendolo del fichero de respuesta
-                        cliente = Path.GetFileNameWithoutExtension(fich_respuesta)
-                        posicion = cliente.IndexOf("_salida")
-                        cliente = cliente.Substring(0, posicion)
-                    Catch ex As Exception
-                        'Si no puede asignar el numero de cliente se deja la variable vacia
-                        cliente = ""
-                    End Try
+                    ''controlPaso = "Paso: carga cliente, modelo, ejercicio"
+                    'Dim posicion As Integer
+                    'Try
+                    '    'Intenta asignar el numero de cliente cogiendolo del fichero de respuesta
+                    '    cliente = Path.GetFileNameWithoutExtension(fich_respuesta)
+                    '    posicion = cliente.IndexOf("_salida")
+                    '    cliente = cliente.Substring(0, posicion)
+                    'Catch ex As Exception
+                    '    'Si no puede asignar el numero de cliente se deja la variable vacia
+                    '    cliente = ""
+                    'End Try
 
-                    'Si ha encontrado algun error, aviso o advertencia, hace el html
-                    If control > 0 Then
-                        respuestaHtml = formateaJson(read, cliente, modelo, ejercicio, periodo)
-                    End If
+                    ''Si ha encontrado algun error, aviso o advertencia, hace el html
+                    'If control > 0 Then
+                    '    respuestaHtml = formateaJson(read, cliente, modelo, ejercicio, periodo)
+                    'End If
                 End If
             End If
 
@@ -688,6 +693,12 @@ Public Class Form1
             'Si no hay csv es señal de que no se ha podido presentar (nunca habra un modelo presentado sin csv) y damos el error con la excepcion.
             If csv = "" Then
                 TextBox2.Text = "MENSAJE = Proceso cancelado o error en envio. " & ex.Message
+                respuestaHtml = generaRespuestaHtml(read, Cabecera, fich_respuesta, respuesta, errorEnvio:=ex.Message, control:=1)
+                'respuestaHtml = "MENSAJE = Proceso cancelado o error en envio. " & ex.Message
+                If Not String.IsNullOrEmpty(respuestaHtml) Then
+                    Dim ficheroSalida As String = Path.ChangeExtension(fich_respuesta, ".html")
+                    File.WriteAllText(ficheroSalida, respuestaHtml, Encoding.Default)
+                End If
             End If
         End Try
 
@@ -731,10 +742,15 @@ Public Class Form1
 
     End Sub
 
-    Private Function formateaJson(respuesta As Newtonsoft.Json.Linq.JObject, cliente As String, modelo As String, ejercicio As String, periodo As String) As String
-        Dim errores As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "errores") ' Captura los errores
-        Dim avisos As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "avisos") 'Captura los avisos
-        Dim advertencias As String = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "advertencias") 'Captura las advertencias
+    Private Function formateaJson(respuesta As Newtonsoft.Json.Linq.JObject, cliente As String, modelo As String, ejercicio As String, periodo As String, Optional errorEnvio As String = "") As String
+        Dim errores As String = errorEnvio
+        Dim avisos As String = ""
+        Dim advertencias As String = ""
+        If respuesta IsNot Nothing Then
+            errores = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "errores") ' Captura los errores
+            avisos = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "avisos") 'Captura los avisos
+            advertencias = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "advertencias") 'Captura las advertencias
+        End If
 
         ' Contruye el HTML
         Dim contenidoHtml As String = ""
@@ -812,6 +828,58 @@ Public Class Form1
             Next
         End If
         Return elementos
+    End Function
+
+    Private Function generaRespuestaHtml(read As JObject, ByRef cabecera As ArrayList, fich_respuesta As String, respuesta As ArrayList, Optional errorEnvio As String = "", Optional control As Integer = 0)
+        Dim elementos As String() = {"errores", "avisos", "advertencias"}
+        'Dim control = 0
+        Dim respuestaHtml = ""
+        'Detecta si en la respuesta hay alguno de los elementos para ver si hay errores, avisos o advertencias
+        For Each elemento As String In elementos
+            If read IsNot Nothing AndAlso read("respuesta").Type = JTokenType.Object AndAlso CType(read("respuesta"), JObject).ContainsKey(elemento) Then
+                control += 1
+            End If
+        Next
+
+        'Carga los datos del modelo, ejercicio, periodo y cliente para ponerlos en el html
+        Dim indice As Integer
+        Dim modelo As String = ""
+        Dim ejercicio As String = ""
+        Dim periodo As String = ""
+        Dim cliente As String = ""
+        For Each linea As String In cabecera
+            indice = linea.IndexOf("=")
+            If indice <> -1 Then
+                If linea.Contains("MODELO") Then
+                    modelo = linea.Substring(indice + 1)
+                End If
+                If linea.Contains("EJERCICIO") Then
+                    ejercicio = linea.Substring(indice + 1)
+                End If
+                If linea.Contains("PERIODO") Then
+                    periodo = linea.Substring(indice + 1)
+                End If
+            End If
+        Next
+
+        'controlPaso = "Paso: carga cliente, modelo, ejercicio"
+        Dim posicion As Integer
+        Try
+            'Intenta asignar el numero de cliente cogiendolo del fichero de respuesta
+            cliente = Path.GetFileNameWithoutExtension(fich_respuesta)
+            posicion = cliente.IndexOf("_salida")
+            cliente = cliente.Substring(0, posicion)
+        Catch ex As Exception
+            'Si no puede asignar el numero de cliente se deja la variable vacia
+            cliente = ""
+        End Try
+
+        'Si ha encontrado algun error, aviso o advertencia, hace el html
+        If control > 0 Then
+            respuestaHtml = formateaJson(read, cliente, modelo, ejercicio, periodo, errorEnvio:=errorEnvio)
+        End If
+
+        Return respuestaHtml
     End Function
 
 End Class
