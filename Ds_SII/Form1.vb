@@ -17,6 +17,7 @@ Public Class Form1
     Dim certificado_fich = ""
     Dim certificado_passw = ""
     Dim sincertificado = False
+    Dim dsclave As String = ""
 
 
 
@@ -124,7 +125,7 @@ Public Class Form1
         ' ds123457 0 C:\AEAT\111\111_2021.txt C:\AEAT\111\111_2021.res  "c:\certificados\Carlos Clemente (28.02.25).pfx" 05196375P
 
         Dim arguments As String() = Environment.GetCommandLineArgs()
-        Dim dsclave As String = ""
+        'Dim dsclave As String = ""
         Dim tipo, dscertificado As String
         Dim indice As Integer = -1
 
@@ -385,7 +386,7 @@ Public Class Form1
     Private Function quita_raros(aux As String)
         aux = aux.Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u").Replace("º", ".").Replace("ª", ".").Replace("ñ", "¤")
 
-        aux = aux.Replace("Á", "A").Replace("É", "E").Replace("Í", "I").Replace("Ó", "O").Replace("Ú", "U").Replace("ñ", "¤")
+        aux = aux.Replace("Á", "A").Replace("É", "E").Replace("Í", "I").Replace("Ó", "O").Replace("Ú", "U").Replace("Ñ", "¤")
         Return aux
     End Function
 
@@ -397,17 +398,19 @@ Public Class Form1
         Dim url As String = ""
         Dim valido As Boolean = False
         Dim fecha As Date
+        'Dim controlPaso As String = "" 'Para debugar el error de longitud incorrecta (quitar despues)
 
 
 
         Try
+            'controlPaso = "Paso: carga datos"
             System.Net.ServicePointManager.SecurityProtocol = 3072 ' Tls12	3072  - Tls11	768  para que no de error de que no puede crear un canal seguro. Con el framework 4.7.2 ya no da error si se quita esta linea
             codifica = saca_codificacion_modelo(TextBox1.Text) ' UTF-8 , ISO8859-1 (ascii extendido 256 bits o ansi)
             carga_datos_modelo(TextBox1.Text, codifica, Cabecera, body, respuesta, url)
-
             Dim request As HttpWebRequest = WebRequest.Create(url)
             Dim certificate As X509Certificate2  ' X509Certificate deberia ser X509Certificate2 para proxima compilacion, ya se ha cambiado falta compilarlo
 
+            'controlPaso = "Paso: Se pide certificado"
             If sincertificado = False Then  ' SE PIDE EL CERTIFICADO , sera para los casos que hay que presentar la declaracion es decir distinto a ds123458
                 If certificado_fich = "" Then
                     cadena = ListBox2.Items(ListBox1.SelectedIndex)
@@ -422,7 +425,7 @@ Public Class Form1
                 fecha = Convert.ToDateTime(certificate.GetExpirationDateString())
                 If fecha < DateTime.Now Then
                     TextBox2.Text = "MENSAJE = El certificado ha caducado "
-                    If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, TextBox2.Text, Encoding.Default)
+                    If Not String.IsNullOrEmpty(fich_respuesta) Then File.WriteAllText(fich_respuesta, TextBox2.Text, Encoding.Default)
                     If viene_de_ds Then
                         End   ' terminamos
                     Else
@@ -432,7 +435,7 @@ Public Class Form1
                 request.ClientCertificates.Add(certificate)
             End If
 
-
+            'controlPaso = "Paso: prepara json"
             Dim data As StringBuilder
             data = New StringBuilder()
             ' preparar json para enviar
@@ -457,6 +460,7 @@ Public Class Form1
             data.Append("}")
 
 
+            'controlPaso = "Paso: codificacion datos"
             Dim basura As String = data.ToString()
             Dim byteArray As Byte()
 
@@ -470,6 +474,7 @@ Public Class Form1
             dataStream.Write(byteArray, 0, byteArray.Length) ' Write the data to the request stream.
             dataStream.Close() ' Close the Stream object.
 
+            'controlPaso = "Paso: obtencion respuesta"
             Dim response As WebResponse = request.GetResponse()  ' Get the response. Aqui hace la peticion
             Dim stream As System.IO.Stream = response.GetResponseStream()
             'Dim reader = New StreamReader(stream, System.Text.Encoding.Default, False, 512)
@@ -498,6 +503,7 @@ Public Class Form1
                 ' Cargamos el json 
                 Dim read = Newtonsoft.Json.Linq.JObject.Parse(contents)
 
+                'controlPaso = "Paso: carga respuesta textBox"
                 For x = 0 To respuesta.Count - 1 ' busca la variables de la respuesta y las rellena con el valor
                     kk = -1
                     valor = ""
@@ -515,6 +521,7 @@ Public Class Form1
                         Next
                     Else
 
+                        'controlPaso = "Paso: respuesta pdf"
                         If respuesta(x) = "pdf" Then
                             Try
                                 valor = ""
@@ -538,7 +545,7 @@ Public Class Form1
 
                         End If
 
-
+                        'controlPaso = "Paso: respuesta errores"
                         If respuesta(x) = "errores" Then
                             Try
                                 valor = ""
@@ -559,8 +566,8 @@ Public Class Form1
 
                         End If
 
+                        'controlPaso = "Paso: respuesta avisos"
                         If respuesta(x) = "avisos" Then
-
                             Try
                                 valor = ""
                                 cadena = read.Item("respuesta")("avisos").ToString
@@ -578,6 +585,7 @@ Public Class Form1
                             End Try
                         End If
 
+                        'controlPaso = "Paso: respuesta advertencias"
                         If respuesta(x) = "advertencias" Then
                             Try
                                 valor = ""
@@ -597,79 +605,97 @@ Public Class Form1
                         End If
                     End If
 
+                    'controlPaso = "Paso: no hay errores"
                     If kk = -1 Then ' no ha encontrado errores, ni avisos ni advertencias, graba el titulo con su valor
                         TextBox2.Text = TextBox2.Text & respuesta(x) & " = " & valor & vbCrLf
                     End If
                 Next
 
-                'Controla si en la respuesta hay errores, avisos o advertencias para crear el html
-                Dim elementos As String() = {"errores", "avisos", "advertencias"}
-                Dim control = 0
-                For Each elemento As String In elementos
-                    If read("respuesta").Type = JTokenType.Object AndAlso CType(read("respuesta"), JObject).ContainsKey(elemento) Then
-                        control += 1
+                'controlPaso = "Paso: montar el html"
+                If dsclave = "ds123458" Then 'Solo se hace el html cuando se manda a validar, ya que el programa sirve tambien para la presentacion directa
+                    'Controla si en la respuesta hay errores, avisos o advertencias para crear el html
+                    Dim elementos As String() = {"errores", "avisos", "advertencias"}
+                    Dim control = 0
+                    'Detecta si en la respuesta hay alguno de los elementos para ver si hay errores, avisos o advertencias
+                    For Each elemento As String In elementos
+                        If read("respuesta").Type = JTokenType.Object AndAlso CType(read("respuesta"), JObject).ContainsKey(elemento) Then
+                            control += 1
+                        End If
+                    Next
+
+                    'Carga los datos del modelo, ejercicio, periodo y cliente para ponerlos en el html
+                    Dim indice As Integer
+                    Dim modelo As String = ""
+                    Dim ejercicio As String = ""
+                    Dim periodo As String = ""
+                    Dim cliente As String = ""
+                    For Each linea As String In Cabecera
+                        indice = linea.IndexOf("=")
+                        If indice <> -1 Then
+                            If linea.Contains("MODELO") Then
+                                modelo = linea.Substring(indice + 1)
+                            End If
+                            If linea.Contains("EJERCICIO") Then
+                                ejercicio = linea.Substring(indice + 1)
+                            End If
+                            If linea.Contains("PERIODO") Then
+                                periodo = linea.Substring(indice + 1)
+                            End If
+                        End If
+                    Next
+
+                    'controlPaso = "Paso: carga cliente, modelo, ejercicio"
+                    Dim posicion As Integer
+                    Try
+                        'Intenta asignar el numero de cliente cogiendolo del fichero de respuesta
+                        cliente = Path.GetFileNameWithoutExtension(fich_respuesta)
+                        posicion = cliente.IndexOf("_salida")
+                        cliente = cliente.Substring(0, posicion)
+                    Catch ex As Exception
+                        'Si no puede asignar el numero de cliente se deja la variable vacia
+                        cliente = ""
+                    End Try
+
+                    'Si ha encontrado algun error, aviso o advertencia, hace el html
+                    If control > 0 Then
+                        respuestaHtml = formateaJson(read, cliente, modelo, ejercicio, periodo)
                     End If
-                Next
-
-                'Poner aqui el control del array cabecera para sacar el modelo, ejercicio y periodo y grabarlo luego en el html
-
-                Dim indice As Integer
-                Dim modelo As String = ""
-                Dim ejercicio As String = ""
-                Dim periodo As String = ""
-                Dim cliente As String = ""
-                For Each linea As String In Cabecera
-                    indice = linea.IndexOf("=")
-                    If indice <> -1 Then
-                        If linea.Contains("MODELO") Then
-                            modelo = linea.Substring(indice + 1)
-                        End If
-                        If linea.Contains("EJERCICIO") Then
-                            ejercicio = linea.Substring(indice + 1)
-                        End If
-                        If linea.Contains("PERIODO") Then
-                            periodo = linea.Substring(indice + 1)
-                        End If
-                    End If
-                Next
-
-                Dim posicion As Integer
-                cliente = Path.GetFileNameWithoutExtension(fich_respuesta)
-                posicion = cliente.IndexOf("_salida")
-                cliente = cliente.Substring(0, posicion)
-
-                If control > 0 Then
-                    respuestaHtml = formateaJson(read, cliente, modelo, ejercicio, periodo)
                 End If
             End If
 
-
-
+            'controlPaso = "Paso: graba html"
+            'Si se ha producido algun error la variable valido sera false y grabamos el fichero html de respuesta
             If Not valido Then
-                Dim ruta As String
-                Dim salida As String
-
-                ruta = Path.GetDirectoryName(fich_respuesta)
-                salida = Path.GetFileNameWithoutExtension(fich_respuesta)
-                If ruta = "" Then
-                    ruta = My.Application.Info.DirectoryPath
-                End If
+                Dim ficheroSalida As String = Path.ChangeExtension(fich_respuesta, ".html")
                 aux = quita_raros(contents)
-                'File.WriteAllText(ruta & "\" & salida & ".json", aux, Encoding.Default)
-                If respuestaHtml <> "" Then
-                    File.WriteAllText(ruta & "\" & salida & ".html", respuestaHtml, Encoding.Default)
+                If Not String.IsNullOrEmpty(respuestaHtml) Then 'Si se ha podido grabar la variable respuestaHtml se graba el fichero de respuesta.html
+                    File.WriteAllText(ficheroSalida, respuestaHtml, Encoding.Default)
                 End If
             End If
+
 
         Catch ex As Exception
-            TextBox2.Text = "MENSAJE = Proceso cancelado o error en envio." & ex.Message
-            ' MsgBox("Error .... " & ex.Message)
+            'Para evitar que si se queda presentado un modelo y despues se genera una excepcion, se controla que en el textBox2 este grabado el csv y sea de 16 digitos
+            Dim texto As String = TextBox2.Text
+            Dim textoBuscado As String = "CodigoSeguroVerificacion = "
+            Dim indiceTexto As Integer = texto.IndexOf(textoBuscado)
+            Dim csv As String = ""
+            'Si ha encontrado el textoBuscado graba el csv
+            If indiceTexto <> -1 Then
+                csv = texto.Substring(indiceTexto + textoBuscado.Length, 16)
+            End If
+
+            'Si no hay csv es señal de que no se ha podido presentar (nunca habra un modelo presentado sin csv) y damos el error con la excepcion.
+            If csv = "" Then
+                TextBox2.Text = "MENSAJE = Proceso cancelado o error en envio. " & ex.Message
+            End If
         End Try
 
+        'Graba el fichero de respuesta con el contenido del textbox2 que tiene la respuesta de Hacienda
         Try
             aux = TextBox2.Text
             aux = quita_raros(aux)
-            If fich_respuesta <> "" Then File.WriteAllText(fich_respuesta, aux, Encoding.Default) 'Codigo comentado porque ya se genera la respuesta en un fichero .html con los errores
+            If Not String.IsNullOrEmpty(fich_respuesta) Then File.WriteAllText(fich_respuesta, aux, Encoding.Default)
         Catch ex As Exception
 
         End Try
