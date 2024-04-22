@@ -466,7 +466,6 @@ Public Class Form1
 
             Dim response As WebResponse = request.GetResponse()
             ' Get the response. Aqui hace la peticion
-            'Throw New Exception
             Dim stream As System.IO.Stream = response.GetResponseStream()
             'Dim reader = New StreamReader(stream, System.Text.Encoding.Default, False, 512)
             Dim reader = New StreamReader(stream)
@@ -798,13 +797,13 @@ Public Class Form1
             For Each linea As String In cabecera
                 indice = linea.IndexOf("=")
                 If indice <> -1 Then
-                    If linea.Contains("MODELO") Then
+                    If linea.StartsWith("MODELO") Then
                         modelo = linea.Substring(indice + 1)
                     End If
-                    If linea.Contains("EJERCICIO") Then
+                    If linea.StartsWith("EJERCICIO") Then
                         ejercicio = linea.Substring(indice + 1)
                     End If
-                    If linea.Contains("PERIODO") Then
+                    If linea.StartsWith("PERIODO") Then
                         periodo = linea.Substring(indice + 1)
                     End If
                 End If
