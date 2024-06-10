@@ -711,7 +711,7 @@ Public Class Form1
         If errores <> "" Then
             'Generar tabla de errores
             contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #FFBFBF'><th><span style='color: red;font-size: 1em;margin-right: 5px;'>&#128711;</span> Errores detectados</th></tr>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #FFBFBF'><th><span style='color: red;font-size: 1em;margin-right: 5px;'>&#128711;</span> Errores. Impiden la presentacion de la declaracion</th></tr>" & vbCrLf
             contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "errores")
             contenidoHtml &= "</table>" & vbCrLf
         End If
@@ -721,7 +721,7 @@ Public Class Form1
         If avisos <> "" Then
             ' Generar tabla de avisos
             contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #F9E79F'><th><span style='color: #228B22;font-size: 1.2em;margin-right: 5px;'>&#9888;</span>Avisos que deben revisarse</th></tr>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #F9E79F'><th><span style='color: #228B22;font-size: 1.2em;margin-right: 5px;'>&#9888;</span>Avisos. Permiten presentar la declaracion</th></tr>" & vbCrLf
             contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "avisos")
             contenidoHtml &= "</table>" & vbCrLf
         End If
@@ -729,7 +729,7 @@ Public Class Form1
         If advertencias <> "" Then
             'Generar tabla de advertencias
             contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #AED6F1'><th><span style='color: #6A5ACD;font-size: 1.2em;margin-right: 5px;'>&#128712;</span>Advertencias a tener en cuenta</th></tr>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: #AED6F1'><th><span style='color: #6A5ACD;font-size: 1.2em;margin-right: 5px;'>&#128712;</span>Advertencias. Pueden provocar un requerimiento de la AEAT</th></tr>" & vbCrLf
             contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "advertencias")
             contenidoHtml &= "</table>" & vbCrLf
         End If
