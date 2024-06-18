@@ -19,8 +19,6 @@ Public Class Form1
     Dim sincertificado = False
     Dim dsclave As String = ""
 
-
-
     Private Sub carga_certificados()
         Dim store As X509Store = New X509Store(StoreName.My, StoreLocation.CurrentUser)
         Dim fecha As Date
@@ -686,6 +684,7 @@ Public Class Form1
         Dim errores As String = ""
         Dim avisos As String = ""
         Dim advertencias As String = ""
+
         If respuesta IsNot Nothing Then
             errores = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "errores") ' Captura los errores
             avisos = ObtenerElementosJson(DirectCast(respuesta("respuesta"), JObject), "avisos") 'Captura los avisos
@@ -698,39 +697,54 @@ Public Class Form1
         contenidoHtml = "<!DOCTYPE html>" & vbCrLf &
                                         "<html>" & vbCrLf &
                                         "<head>" & vbCrLf &
+                                        "<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css'>" & vbCrLf &
                                         "<style>" & vbCrLf &
-                                        "th, td{border: 1px solid red;padding: 5px 5px 5px 15px;text-align: justify; font-size:1em}" & vbCrLf &
+                                        "th, td{padding: 5px 5px 5px 15px;text-align: justify; font-size:1em}" & vbCrLf &
                                         "td{font-size:0.9em;padding: 5px 20px 5px 40px}" & vbCrLf &
                                         "</style>" & vbCrLf &
                                         "</head>" & vbCrLf &
                                         "<body  style='margin: 40px; font-family: Calibri; font-size: 1.2em;'>" & vbCrLf &
                                         "<title>Resultado de la validaci&oacute;n</title>" & vbCrLf &
                                         "<p style='font-family:Calibri; font-size: 1.5em; text-align:center'>Resultado de la validaci&oacute;n</p>" & vbCrLf &
-                                        "<p style='font-family:Calibri; font-size: 0.9em; text-align: center'>Cliente: " & cliente & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Modelo: " & modelo & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Ejercicio: " & ejercicio & "-&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;Periodo: " & periodo & "</p>" & vbCrLf
+                                        "<p style='font-family:Calibri; font-size: 0.9em; text-align: center'>Cliente: " & cliente & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Modelo: " & modelo & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Ejercicio: " & ejercicio & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Periodo: " & periodo & "&nbsp;&nbsp;&nbsp;--&nbsp;&nbsp;&nbsp;Fecha generacion: " & DateTime.Now & "</p>" & vbCrLf
+
+        'Colores para la tabla html de avisos y errores
+        Dim fondo1 As String 'Cabecera tabla
+        Dim fondo2 As String 'Lineas tabla
+        Dim borde As String 'Borde e icono
 
         If errores <> "" Then
             'Generar tabla de errores
-            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #FFBFBF'><th><span style='color: red;font-size: 1em;margin-right: 5px;'>&#128711;</span> Errores. Impiden la presentacion de la declaracion</th></tr>" & vbCrLf
-            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "errores")
-            contenidoHtml &= "</table>" & vbCrLf
-        End If
+            fondo1 = "#FFBFBF" 'Cabecera tabla
+            fondo2 = "#FFEBEE" 'Lineas tabla
+            borde = "#ED1C24" 'Borde e icono
 
-
-
-        If avisos <> "" Then
-            ' Generar tabla de avisos
-            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #F9E79F'><th><span style='color: #228B22;font-size: 1.2em;margin-right: 5px;'>&#9888;</span>Avisos. Permiten presentar la declaracion</th></tr>" & vbCrLf
-            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "avisos")
+            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em; border: 1px solid " & borde & ";'>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: " & fondo1 & "'><th><i class='fa-solid fa-rectangle-xmark' style='color: " & borde & ";font-size: 1.2em;margin-right: 5px;'></i>&nbsp;&nbsp;&nbsp;Errores. No es posible presentar la declaracion</th></tr>" & vbCrLf
+            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "errores", fondo2, borde)
             contenidoHtml &= "</table>" & vbCrLf
         End If
 
         If advertencias <> "" Then
             'Generar tabla de advertencias
-            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em;'>" & vbCrLf
-            contenidoHtml &= "<tr style='background-color: #AED6F1'><th><span style='color: #6A5ACD;font-size: 1.2em;margin-right: 5px;'>&#128712;</span>Advertencias. Pueden provocar un requerimiento de la AEAT</th></tr>" & vbCrLf
-            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "advertencias")
+            fondo1 = "#F9E79F" 'Cabecera tabla
+            fondo2 = "#FCF3CF" 'Lineas tabla
+            borde = "#FFA500" 'Borde e icono
+
+            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em; border: 1px solid " & borde & ";'>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: " & fondo1 & "'><th><i class='fa-solid fa-triangle-exclamation' style='color: " & borde & ";font-size: 1.2em;margin-right: 5px;'></i>&nbsp;&nbsp;&nbsp;Advertencias. Pueden provocar un requerimiento de la AEAT</th></tr>" & vbCrLf
+            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "advertencias", fondo2, borde)
+            contenidoHtml &= "</table>" & vbCrLf
+        End If
+
+        If avisos <> "" Then
+            ' Generar tabla de avisos
+            fondo1 = "#AED6F1" 'Cabecera tabla
+            fondo2 = "#EBF5FB" 'Lineas tabla
+            borde = "#6A5ACD" 'Borde e icono
+            contenidoHtml &= "<table style='margin: 10px; width: 100%; border-collapse: collapse; font-size: 1em; border: 1px solid " & borde & ";'>" & vbCrLf
+            contenidoHtml &= "<tr style='background-color: " & fondo1 & "'><th><i class='fa-solid fa-circle-info' style='color: " & borde & ";font-size: 1.2em;margin-right: 5px;'></i>&nbsp;&nbsp;&nbsp;Avisos que deben revisarse. Permiten presentar la declaracion</th></tr>" & vbCrLf
+            contenidoHtml &= GenerarFilas(DirectCast(respuesta("respuesta"), JObject), "avisos", fondo2, borde)
             contenidoHtml &= "</table>" & vbCrLf
         End If
 
@@ -753,23 +767,15 @@ Public Class Form1
         Return elementos
     End Function
 
-    Private Function GenerarFilas(respuesta As Newtonsoft.Json.Linq.JObject, clave As String) As String
+    Private Function GenerarFilas(respuesta As Newtonsoft.Json.Linq.JObject, clave As String, fondo As String, borde As String) As String
         'Funcion que genera cada una de las filas de las tablas, formateandolas segun sin son errores, avisos o advertencias
-        Dim color_error As String = "#FFEBEE"
-        Dim color_aviso As String = "#FCF3CF"
-        Dim color_advertencia As String = "#EBF5FB"
+
         Dim elementos As String = ""
+
         If respuesta.ContainsKey(clave) Then
             Dim elementosArray As JArray = DirectCast(respuesta(clave), JArray)
             For Each elemento As JToken In elementosArray
-                Select Case clave
-                    Case "errores"
-                        elementos &= "<tr style='background-color: " & color_error & "'><tr><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
-                    Case "avisos"
-                        elementos &= "<tr style='background-color: " & color_aviso & "'><tr><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
-                    Case "advertencias"
-                        elementos &= "<tr style='background-color: " & color_advertencia & "'><tr><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
-                End Select
+                elementos &= "<tr style='background-color: " & fondo & "; border: 1px solid " & borde & "'><td>" & elemento.ToString() & "</td></tr>" & vbCrLf
             Next
         End If
         Return elementos
